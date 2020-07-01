@@ -34,6 +34,7 @@ void leituraBits(FILE *F, unsigned char **B, unsigned char **G, unsigned char **
 void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsigned char **G,unsigned char **R, char* nome_imagem);
 int verificaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH);
 void converte_string_binario(int n, int tamanho, char* vetor_aux);
+void gravaBlocos(int num_blocos, int **dc_codes, int ***ac_codes, FILE *F);
 void grava_result_compressao(BMPFILEHEADER FH, BMPINFOHEADER IH, int **dc_codes_Y, int ***ac_codes_Y, int **dc_codes_Cb, int ***ac_codes_Cb, int **dc_codes_Cr, int ***ac_codes_Cr, char* nome_imagem);
 
 

@@ -32,6 +32,7 @@ void leituraInfo(FILE *F, BMPINFOHEADER *H){
     printf("\nInfoHeader read done!");
 }
 
+//Exibindo informacoes obtidas do cabeçalho lido
 void exibeInformacoesCabecalhos(BMPFILEHEADER FH, BMPINFOHEADER IH){
     printf("\n\n===========================\n");
     printf("BMP File Header");
@@ -58,6 +59,7 @@ void exibeInformacoesCabecalhos(BMPFILEHEADER FH, BMPINFOHEADER IH){
     printf("\nbiClrImportant: %d", IH.biClrImportant);
 }
 
+//Função que le o arquivo de entrada, byte a byte
 void leituraBits(FILE *F, unsigned char *B, int num_blocos){
     int i;
     for (i=0; i<num_blocos ;i++){
@@ -65,36 +67,63 @@ void leituraBits(FILE *F, unsigned char *B, int num_blocos){
     }
 }
 
-void converte_string_binario(int n, int tamanho, char* vetor_aux, char *vetor){
-    int r, i;
+//Função para converter um inteiro em uma string com seu correspondente valor binário
+void converte_string_binario(int n, char* vetor){
+    int i;
+    int pos_inicial;
 
-    // Utiliza um número de 32 bits como base para a conversão.
-    for(int aux_i = 31; aux_i >= 0; aux_i--) {
-        // Executa a operação shift right até a
-        // última posição da direita para cada bit.
-        r = n >> aux_i;
+    char vetor_aux[9];
 
-        // Por meio do "e" lógico ele compara se o valor
-        // na posição mais à direita é 1 ou 0
-        // e imprime na tela até reproduzir o número binário.
-        if(r & 1) {
-            vetor[aux_i] = '1';
-            //printf("1");
-        } else {
-            vetor[aux_i] = '0';
-            //printf("0");
+    if(n >= 128){
+      pos_inicial = 7;
+    }
+    else if (n >= 64){
+      pos_inicial = 6;
+    }
+    else if (n >= 32){
+      pos_inicial = 5;
+    }
+    else if (n >= 16){
+      pos_inicial = 4;
+    }
+    else if (n >= 8){
+      pos_inicial = 3;
+    }
+    else if (n >= 4){
+      pos_inicial = 2;
+    }
+    else if (n >= 2){
+      pos_inicial = 1;
+    }
+    else{
+      pos_inicial = 0;
+    }
+
+    for(i = 0; i < 8; i++){
+      if(i > pos_inicial){
+        vetor_aux[i] = '0';
+      }
+      else{
+        if(n % 2 == 0){
+          vetor_aux[i] = '0';
         }
+        else{
+          vetor_aux[i] = '1';
+        }
+        n = n/2;
+      }
+    }
 
-     }
-
-     int aux = 0;
-     for(i = (tamanho-1); i >= 0; i--){
-        vetor_aux[aux] = vetor[i];
-        aux += 1;
-     }
-     vetor_aux[tamanho] = '\0';
+    int pos = 7;
+    for(i = 0; i < 8; i++){
+      vetor[pos] = vetor_aux[i];
+      pos--;
+    }
+    vetor[8] = '\0';
 }
 
+//Função para gravar o cabeçalho e os canais após a decdificação
+//Retornando assim à imagem original
 void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsigned char **G,unsigned char **R, char* nome_imagem){
     FILE *F;
     F = fopen(nome_imagem, "wb");
@@ -141,25 +170,26 @@ void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsig
     fclose(F);
 }
 
+//Função que decodifica os bytes lidos, retornando as infromações aos canais Y, Cb e Cr após a quantização
+//Retorna num_blocos vetores de 64 posições, com seus correspondentes valores DC (posição 0) e ACs
 void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_AC, int num_blocos, int **blocos){
 
-    printf("Entro recupera!");
     //Buffer para leitura do arquivo compactado, byte a byte
     unsigned char buffer = 0;
 
-    char string_comparacao[16];
+    //Variáveis de controle e manipulação
+    char string_comparacao[17];
     string_comparacao[0] = '\0';
-    char string_comparacao_aux[16];
+    char string_comparacao_aux[17];
     string_comparacao_aux[0] = '\0';
-    char string_valor_DC[16];
-    char string_valor_DC_aux[16];
-    char string_valor_AC[16];
-    char string_valor_AC_aux[16];
+    char string_valor_DC[17];
+    char string_valor_DC_aux[17];
+    char string_valor_AC[17];
+    char string_valor_AC_aux[17];
 
     char *vetor_binario;
-    vetor_binario = (char *) malloc(8*sizeof(char));
+    vetor_binario = (char *) malloc(9*sizeof(char));
 
-    int tam = 8;
     int categoria;
     int num_zeros;
     int resto = 0;
@@ -184,13 +214,11 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
     int AC_modificado = 0;
     int DC_modificado = 0;
 
-    char *vetor;
-    vetor = (char *) calloc (32, sizeof(char));
-
-    //Para isso, armazenamos primeiro os DCS que est�o codificados:
+    //Vetor para armazenar os valores DC
     int *valores_DC;
     valores_DC = (int *) malloc(num_blocos*sizeof(int));
 
+    //Matriz para guqrdar os valores AC
     int **valores_AC;
     valores_AC = malloc(num_blocos*sizeof(int *));
     if (valores_AC == NULL) {
@@ -207,17 +235,21 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
     int blocos_lidos = 0;
     int ext_zero = 0;
 
+    //Pelo tamanho da imagem, sabemos quanto blocos correspondem a cada canal
+    //Sendo assim, enquanto não lemos todos os blocos, ficamos nesse loop
     while (blocos_lidos < num_blocos){
 
+        //Caso identificado um fim de bloco --> inicia decodificação DC
         if (EOB == 1){
             EOB = 0;
             do{
+                //Resto corresponde ao que falta ser lido no buffer
+                //Se o resto é zero, lê o próximo buffer
                 if (resto == 0){
                     fread(&buffer, sizeof(unsigned char), 1, fp);
-                    converte_string_binario(buffer, tam, vetor_binario, vetor);
-                    vetor[0] = '\0';
+                    converte_string_binario((int)buffer, vetor_binario);
                 }
-
+                //Se o resto for maior que zero
                 if (resto > 0){
                     if (resto == 1){
                         strncpy(string_comparacao, vetor_binario+(8-resto), resto);
@@ -236,6 +268,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                             strncpy(string_comparacao, vetor_binario+(8-resto), i);
                             string_comparacao[i] = '\0';
 
+                            //Compara a sequência lida com os prefixos DC possíveis
                             for(int j = 0; j < 11; j++){
                                 if(strcmp(string_comparacao,prefix_table[j].prefix_bits) == 0){
                                     categoria = j;
@@ -246,6 +279,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                     break;
                                 }
                             }
+                            //Se leu um prefixo DC
                             if(leu_prefixo_DC == 1){
                                 resto_prefixo_DC = 0;
                                 if ((categoria) <= resto){
@@ -280,6 +314,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                     }
                 }
                 else{
+                    //Se ainda falta ler um valor DC
                     if (resto_valor_DC > 0){
                         if (resto_valor_DC <= 8){
                             strncpy(string_valor_DC_aux, vetor_binario, resto_valor_DC);
@@ -293,7 +328,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                         }
                         else{
                             strncpy(string_valor_DC_aux, vetor_binario, 8);
-                            string_valor_DC_aux[resto] = '\0';
+                            string_valor_DC_aux[8] = '\0';
 
                             strcat(string_valor_DC, string_valor_DC_aux);
                             resto = 0;
@@ -302,6 +337,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                         }
                     }
                     else{
+                        //Se está no meio da leitura de um prefixo
                         if (resto_prefixo_DC == 1){
                             for(int i = 0; i < 8; i++){
                                 strncpy(string_comparacao_aux, vetor_binario+i, 1);
@@ -351,7 +387,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
 
                         }
                         else{
-
+                            //Se está começando a leitura de um buffer
                             for(int i = 0; i < 8; i ++){
                                 if(i == 0){
                                     strncpy(string_comparacao, vetor_binario, 1);
@@ -365,6 +401,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                 }
 
                                 if (strlen(string_comparacao) >= 2){
+                                    //Compara com os posíveis prefixos DC
                                     for(int j = 0; j < 11; j++){
                                         if(strcmp(string_comparacao,prefix_table[j].prefix_bits) == 0){
 
@@ -375,6 +412,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                             break;
                                         }
                                     }
+                                    //Se leu o prefixo, lê a categoria
                                     if(leu_prefixo_DC == 1){
                                         if (((i+1)+categoria) <= 8){
                                             if(categoria > 0){
@@ -404,16 +442,21 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                         }
                     }
                 }
+            //Faz a rotina acima enquanto falat ler prefixo e valor DC
             }while((resto_prefixo_DC != 0) || (resto_valor_DC != 0));
 
+            //Aqui, temos o valor DC lido
             valor_DC = 0;
             tamanho = strlen(string_valor_DC);
 
+            //Calculamos o valor DC
             for (int k = 0; k < tamanho; k++){
                 if(string_valor_DC[k] == '1')
                     valor_DC += pow(2,((tamanho-1)-k));
             }
 
+            //Verificamos a categoria
+            //Identificar se o número é positivo ou negativo
             if (categoria == 1){
                 if (valor_DC < 1){
                     valor_DC = -1;
@@ -540,6 +583,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                 valor_DC = (-1)*valor_DC;
             }
 
+            //Coloca o valor no vetor de DCs
             valores_DC[cont_DC] = valor_DC;
             cont_DC++;
         }
@@ -551,12 +595,13 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
         //Quando encontrar um c�digo AC 0/0, preenche as demais linhas de "blocos" com 0
         // e come�a o pr�ximo bloco
         do{
+            //Se já leu todo o buffer, lê um novo
             if (resto == 0){
                 fread(&buffer, sizeof(unsigned char), 1, fp);
-                converte_string_binario(buffer, tam, vetor_binario, vetor);
-                vetor[0] = '\0';
+                converte_string_binario((int)buffer, vetor_binario);
             }
 
+            //Se ainda há oq ser lido no buffer
             if (resto > 0){
                 if (resto == 1){
                     strncpy(string_comparacao, vetor_binario+(8-resto), resto);
@@ -575,6 +620,9 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                         strncpy(string_comparacao, vetor_binario+(8-resto), i);
                         string_comparacao[i] = '\0';
                         //Recuperando numero de zeros e categoria
+                        //cof_AC_num foi criado para comparar somente com os prefixos do tamanho atual da string
+
+                        //Aqui, realiza as comparações com os prefixos da tabela, de acordo com o tamanho da sequência lida
                         if(strlen(string_comparacao) == 2){
                             for(int j = 0; j < 2; j++){
                                 if(strcmp(string_comparacao,prefix_table_AC[coef_AC_2[j][0]][coef_AC_2[j][1]].prefix_bits) == 0){
@@ -713,7 +761,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                     leu_prefixo_AC = 1;
                                     resto_prefixo_AC = 0;
 
-                                    if(j == 1){
+                                    if(j == 1){ //Se identificou uma extensão de zeros
                                         num_zeros += 1;
                                         ext_zero = 1;
                                     }
@@ -735,8 +783,9 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                 }
                             }
                         }
-                        if(EOB == 0){
+                        if(EOB == 0){ //Se o prefixo lido não identificou fim do bloco
                             if(ext_zero == 1){
+                                //Se identificou uma extensão de zeros
                                 resto_prefixo_AC = 0;
                                 resto_valor_AC = 0;
                                 leu_prefixo_AC = 0;
@@ -746,6 +795,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                 break;
                             }
                             else if(leu_prefixo_AC == 1){
+                                //Se leu um prefixo AC
                                 resto_prefixo_AC = 0;
                                 resto = resto - i;
                                 if ((categoria) <= resto){
@@ -771,10 +821,12 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                 }
                                 break;
                             }
+                            //Se ainda não leu o prefixo, indica que ainda falat ler o mesmo
                             else if(leu_prefixo_AC == 0){
                                 resto_prefixo_AC = 1;
                             }
                         }
+                        //Se identificou fim de bloco...
                         else{
                             resto_prefixo_AC = 0;
                             resto_valor_AC = 0;
@@ -783,14 +835,17 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                             break;
                         }
                     }
+                    //Se não leu o prefixo e passou por todo o buffer
                     if(resto_prefixo_AC == 1){
                         resto = 0;
                     }
                 }
-            }
+            } //Se resto == 0 --> novo buffer
             else{
                 if (resto_valor_AC > 0){
+                    //Se esta no meio de uma leitura de valor AC
                     if (resto_valor_AC <= 8){
+                        //Se o valor esta dentro do buffer
                         strncpy(string_valor_AC_aux, vetor_binario, resto_valor_AC);
                         string_valor_AC_aux[resto_valor_AC] = '\0';
 
@@ -801,8 +856,9 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                         leu_prefixo_AC = 0;
                     }
                     else{
+                        //Se o valor a ser lido é maior que o buffer
                         strncpy(string_valor_AC_aux, vetor_binario, 8);
-                        string_valor_AC_aux[resto] = '\0';
+                        string_valor_AC_aux[8] = '\0';
 
                         strcat(string_valor_AC, string_valor_AC_aux);
                         resto = 0;
@@ -811,14 +867,17 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                     }
                 }
                 else{
+                    //Se ainda falta ler um prefixo AC
                     if (resto_prefixo_AC == 1){
+                        //Se está no meio da leitura de um prefixo...
                         for(int i = 0; i < 8; i++){
                             strncpy(string_comparacao_aux, vetor_binario+i, 1);
                             string_comparacao_aux[1] = '\0';
 
                             strcat(string_comparacao, string_comparacao_aux);
 
-                            //Recuperando numero de zeros e categoria
+                        //Recuperando numero de zeros e categoria
+                        //Comparação de acordo com o tamanho da sequência lida
                         if(strlen(string_comparacao) == 2){
                             for(int j = 0; j < 2; j++){
                                 if(strcmp(string_comparacao,prefix_table_AC[coef_AC_2[j][0]][coef_AC_2[j][1]].prefix_bits) == 0){
@@ -957,7 +1016,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                         leu_prefixo_AC = 1;
                                         resto_prefixo_AC = 0;
 
-                                        if(j == 1){
+                                        if(j == 1){ //Se identificou uma extensão de zeros
                                             ext_zero = 1;
                                             num_zeros += 1;
                                         }
@@ -979,7 +1038,8 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                 }
                             }
                             if(EOB == 0){
-                                if(ext_zero == 1){
+                                //Se não identificou fim de bloco
+                                if(ext_zero == 1){ //Se identificou extensão de zeros...
                                     resto_prefixo_AC = 0;
                                     resto_valor_AC = 0;
                                     leu_prefixo_AC = 0;
@@ -993,9 +1053,10 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                     }
                                     break;
                                 }
+                                //Se conseguiu ler o prefixo nesse buffer
                                 else if(leu_prefixo_AC == 1){
                                     resto_prefixo_AC = 0;
-                                    if (((i+1)+categoria) <= 8){
+                                    if (((i+1)+categoria) <= 8){ //Verifica se o valor DC a ser lido esta dentro do buffer atual
                                         if(categoria > 0){
                                             strncpy(string_valor_AC, vetor_binario+(i+1), categoria);
                                             string_valor_AC[categoria] = '\0';
@@ -1010,6 +1071,8 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                         leu_prefixo_AC = 0;
                                     }
                                     else{
+                                        //Se o valor AC não esta somente nesse buffer
+                                        //le o buffer todo e indica quanto ainda resta para a leitura
                                         strncpy(string_valor_AC, vetor_binario+(i+1), (8-(i+1)));
                                         string_valor_AC[8-(i+1)] = '\0';
 
@@ -1018,10 +1081,12 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                     }
                                     break;
                                 }
+                                //Se não leu prefixo, indica que falat um resto de prefixo
                                 else if(leu_prefixo_AC == 0){
                                     resto_prefixo_AC = 1;
                                 }
                             }
+                            //Se idenificou fim de bloco
                             else{
                                 resto = 8 - (i+1);
                                 leu_prefixo_AC = 0;
@@ -1032,7 +1097,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                         }
 
                     }
-                    else{
+                    else{ //Se está começando a ler um nove prefixo
                         for(int i = 0; i < 8; i ++){
                             if(i == 0){
                                 strncpy(string_comparacao, vetor_binario, 1);
@@ -1044,7 +1109,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
 
                                 strcat(string_comparacao, string_comparacao_aux);
                             }
-
+                            //Se a seuqnecia do prefixo tem mais que 2 bits
                             if (strlen(string_comparacao) >= 2){
                                 if(strlen(string_comparacao) == 2){
                                     for(int j = 0; j < 2; j++){
@@ -1207,8 +1272,8 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                         }
                                     }
                                 }
-                                if(EOB == 0){
-                                    if(ext_zero == 1){
+                                if(EOB == 0){ //Se não é fim de bloco...
+                                    if(ext_zero == 1){ //Se viu extensão de zeros
                                         resto_prefixo_AC = 0;
                                         resto_valor_AC = 0;
                                         leu_prefixo_AC = 0;
@@ -1224,7 +1289,8 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                         break;
                                     }
                                     else if(leu_prefixo_AC == 1){
-                                        if (((i+1)+categoria) <= 8){
+                                        //Se leu prefixo
+                                        if (((i+1)+categoria) <= 8){ //Verifica se o valor AC está dentro do buffer atual
                                             if(categoria > 0){
                                                 strncpy(string_valor_AC, vetor_binario+(i+1), categoria);
                                                 string_valor_AC[categoria] = '\0';
@@ -1238,7 +1304,7 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                             resto_valor_AC = 0;
                                             leu_prefixo_AC = 0;
                                         }
-                                        else{
+                                        else{ //Lê todo o buffer e indica que ainda falta ler o valor AC
                                             strncpy(string_valor_AC, vetor_binario+(i+1), (8-(i+1)));
                                             string_valor_AC[(8-(i+1))] = '\0';
 
@@ -1248,10 +1314,12 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                                         break;
                                     }
                                     else if(leu_prefixo_AC == 0){
+                                            //Se não leu prefixo, indica que há um resto de prefixo AC
                                         resto_prefixo_AC = 1;
                                     }
                                 }
                                 else{
+                                    //Se identificou um fim de bloco...
                                     leu_prefixo_AC = 0;
                                     resto_prefixo_AC = 0;
                                     resto_valor_AC = 0;
@@ -1262,25 +1330,28 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                     }
                 }
             }
+        //Enquanto não leu um prefixo e um valor AC, faz a rotina acima
         }while((resto_prefixo_AC != 0) || (resto_valor_AC != 0));
 
         if (EOB == 1){
+            //Se identificou um fim de bloco
+            //É necessário preencher o restante do vetor com zeros!
             resto_AC_bloco = 63-cont_AC;
             for (int aux =0; aux < resto_AC_bloco; aux++){
                 valores_AC[cont_DC-1][cont_AC+aux] = 0;
-                cont_AC++;
             }
             cont_AC = 0;
             valor_AC = 0;
             num_zeros = resto_AC_bloco;
-            //string_comparacao[0] = '\0';
             string_valor_AC[0] = '\0';
             string_comparacao_aux[0] = '\0';
             string_valor_AC_aux[0] = '\0';
             blocos_lidos++;
         }
         else{
-            //logica para gravar os zeros
+            //Se não é fim de bloco...
+
+            //logica para gravar a extensão de zeros
             if(ext_zero == 1){
                 for (int aux =0; aux < num_zeros; aux++){
                     valores_AC[cont_DC-1][cont_AC] = 0;
@@ -1291,20 +1362,24 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                 string_comparacao[0] = '\0';
             }
             else{
-
+                //Grava o total de zeros identificado
                 for (int aux =0; aux < num_zeros; aux++){
                     valores_AC[cont_DC-1][cont_AC] = 0;
                     cont_AC++;
                 }
 
+                //Começamos a gravação do valor AC
                 valor_AC = 0;
                 tamanho = strlen(string_valor_AC);
 
+                //Calcula o valor do AC
                 for (int k = 0; k < tamanho; k++){
                     if(string_valor_AC[k] == '1')
                         valor_AC += pow(2,((tamanho-1)-k));
                 }
 
+                //Compara com a categoria identificada
+                //Determinar se o valor é positivo ou negativo
                 if (categoria == 1){
                     if (valor_AC < 1){
                         valor_AC = -1;
@@ -1431,22 +1506,27 @@ void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_
                     AC_modificado = 0;
                     valor_AC = (-1)*valor_AC;
                 }
-
+                //Coloca o valor AC no vetor de ACs do bloco correspondente
                 valores_AC[cont_DC-1][cont_AC] = valor_AC;
                 cont_AC++;
             }
         }
     }
-    printf("Saiu leitura recupera!");
 
+    //Aqui, já lemos todos os coeficientes DC e AC de todos os blocos do canal
+
+    //Gravamos os valores DC
+    //Desfazendo a codificaão por diferenças
     blocos[0][0] = valores_DC[0];
     for(int k = 1; k < num_blocos; k++){
         blocos[k][0] = valores_DC[k] + blocos[k-1][0];
     }
+    //Gravamos os valores AC nos blocos
     for(int x = 0; x < num_blocos; x++){
         for(int y = 0; y < 63; y++)
             blocos[x][y+1] = valores_AC[x][y];
     }
 
-    printf("\nRecuperou bloco!\n");
+    //Ao final desta função, blocos tem num_blocos vetores de 64 posições
+    //que correspondem as num_blocos matrizes 8x8 que compoem o canal
 }

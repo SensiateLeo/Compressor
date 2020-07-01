@@ -29,7 +29,7 @@ void leituraInfo(FILE *F, BMPINFOHEADER *H){
     fread(&H->biClrImportant, sizeof(unsigned int), 1, F);
 }
 
-//Leitura dos Bits nas matrizes de cores R, G e B
+//Leitura dos Bits nas matrizes de cores R, G e B --> Le B, G e R
 void leituraBits(FILE *F, unsigned char **B, unsigned char **G, unsigned char **R, int m, int n){
     int i , j;
 
@@ -42,6 +42,7 @@ void leituraBits(FILE *F, unsigned char **B, unsigned char **G, unsigned char **
     }
 }
 
+//Função que grava o resultado em um arquivo
 void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsigned char **G,unsigned char **R, char* nome_imagem){
     FILE *F;
     F = fopen(nome_imagem, "wb");
@@ -51,6 +52,7 @@ void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsig
         exit (1);
     }
 
+    //Gravaão do cabeçalho
     fwrite(&FH.bfType, sizeof(FH.bfType), 1, F);
     fwrite(&FH.bfSize, sizeof(FH.bfSize), 1, F);
     fwrite(&FH.bfReserved1, sizeof(FH.bfReserved1), 1, F);
@@ -71,7 +73,7 @@ void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsig
 
     int i , j;
 
-
+    //Gravação dos canais B, G e R
     for (i=0; i<IH.biHeight ;i++){
         for(j=0;j<IH.biWidth;j++){
             fwrite(&B[i][j], sizeof(B[i][j]), 1, F);
@@ -88,6 +90,8 @@ void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsig
     fclose(F);
 }
 
+//Verifica se o arquivo recebido atende as especificações
+//Especificações definidas no requisto do trabalho
 int verificaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH){
     if (FH.bfType !=0x4D42)
     {
@@ -96,7 +100,7 @@ int verificaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH){
         return 0;
     }
     else{
-        printf("O arquivo recebido eh do formato Bitmap.");
+        printf("\nO arquivo recebido eh do formato Bitmap.");
     }
 
     //Verifica se o arquivo já contém compressão
@@ -143,6 +147,7 @@ int verificaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH){
     return 1;
 }
 
+//Função que converte um inteiro para um string de binários
 void converte_string_binario(int n, int tamanho, char* vetor_aux){
     int r, i;
     char *vetor;
@@ -178,6 +183,7 @@ void converte_string_binario(int n, int tamanho, char* vetor_aux){
      vetor = NULL;
 }
 
+//Função que grava somente o cabeçalho da imagem (Teste)
 void gravaCabecalhoBinario(BMPFILEHEADER FH, BMPINFOHEADER IH, FILE *F){
 
     fwrite(&FH.bfType, sizeof(FH.bfType), 1, F);
@@ -200,7 +206,9 @@ void gravaCabecalhoBinario(BMPFILEHEADER FH, BMPINFOHEADER IH, FILE *F){
 
 }
 
-void gravaBlocos(int num_blocos, int **dc_codes, int ***ac_codes, FILE *F, FILE *out_2){
+//Função que grava os códigos Dc e AC de cada bloco codificado
+//Os códigos são gravados em buffers de 1 byte por vez
+void gravaBlocos(int num_blocos, int **dc_codes, int ***ac_codes, FILE *F){
 
     //Gravando resultado da compactacao
     //Baseado na implementa��o fornecida em aula
@@ -236,13 +244,6 @@ void gravaBlocos(int num_blocos, int **dc_codes, int ***ac_codes, FILE *F, FILE 
         converte_string_binario(dc_codes[i][0], dc_codes[i][1], vetor_binario);
         tam = dc_codes[i][1];
         pos_DC = 0;
-
-        if (i < 1){
-            for (int jujuba=0; jujuba<tam; jujuba++){
-                fputc(vetor_binario[jujuba], out_2);
-            }
-            fprintf(out_2, "\n");
-        }
 
         //Se ainda houver espaco no buffer a preencher
         if (resto > 0){
@@ -309,14 +310,6 @@ void gravaBlocos(int num_blocos, int **dc_codes, int ***ac_codes, FILE *F, FILE 
                 EOB = 1;
             }
 
-            if (i < 1){
-                fprintf(out_2, "\n");
-                for (int jujuba=0; jujuba<tam; jujuba++){
-                    fputc(vetor_binario_AC[jujuba], out_2);
-                }
-
-            }
-
             //Se ainda houver espaco no buffer a preencher
             if (resto > 0){
                 //Se o tamanho do novo codigo dc for maior que o espaco a preencher no buffer
@@ -370,26 +363,27 @@ void gravaBlocos(int num_blocos, int **dc_codes, int ***ac_codes, FILE *F, FILE 
     }
 
     if(resto > 0){
+        //Caso o buffer final não tenha sido completo
+        //Faz um left shift de resto posições
+        //Realiza a gravação
+
+        //Isso permite que a seuqência seja mantida
+        //O que restar no buffer, será ignorado na decodificação
         converte_string_binario(buffer, 8, vetor_binario);
         for (aux_3 = 0; aux_3 < resto; aux_3++){
             buffer = (buffer<<1);
         }
-        fwrite(&buffer, sizeof(buffer), 1, F); //1111111111111111
+        fwrite(&buffer, sizeof(buffer), 1, F);
         converte_string_binario(buffer, 8, vetor_binario);
     }
 
     resto = 0;
     buffer_resto = 0;
-    //printf("Buffer: %02x\n", (unsigned int)buffer);
 }
 
-//void grava_result_compressao(BMPFILEHEADER FH, BMPINFOHEADER IH, int **dc_codes_Y, int ***ac_codes_Y, int **dc_codes_Cb, int ***ac_codes_Cb, int **dc_codes_Cr, int ***ac_codes_Cr, char* nome_imagem){
+//Função que grava o resultado da compressao no arquivo binario
 void grava_result_compressao(BMPFILEHEADER FH, BMPINFOHEADER IH, int **dc_codes_Y, int ***ac_codes_Y, int **dc_codes_Cb, int ***ac_codes_Cb, int **dc_codes_Cr, int ***ac_codes_Cr, char* nome_imagem){
     FILE *F;
-    FILE *out_2;
-
-    //Abrindo arquivos para escrita do resultado da compressao
-    out_2 = fopen("out.txt", "w");
 
     F = fopen(nome_imagem, "wb");
     if (F == NULL)
@@ -407,14 +401,13 @@ void grava_result_compressao(BMPFILEHEADER FH, BMPINFOHEADER IH, int **dc_codes_
     int num_buffers_Cb;
     int num_buffers_Cr;
 
-    //Gravando blocos
-    gravaBlocos(num_blocos, dc_codes_Y, ac_codes_Y, F, out_2);
-    gravaBlocos(num_blocos/4, dc_codes_Cb, ac_codes_Cb, F, out_2);
-    gravaBlocos(num_blocos/4, dc_codes_Cr, ac_codes_Cr, F, out_2);
+    //Gravando blocos Y, Cb e Cr
+    gravaBlocos(num_blocos, dc_codes_Y, ac_codes_Y, F);
+    gravaBlocos(num_blocos/4, dc_codes_Cb, ac_codes_Cb, F);
+    gravaBlocos(num_blocos/4, dc_codes_Cr, ac_codes_Cr, F);
 
     printf("\n\n====================\nFim da compressao do arquivo\n====================\n");
 
     //Fechando arquivos
     fclose(F);
-    fclose(out_2);
 }

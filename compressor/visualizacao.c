@@ -1,5 +1,6 @@
 #include "leitura_escrita.h"
 
+//Exibindo informações do cabeçalho da imagem
 void exibeInformacoesCabecalhos(BMPFILEHEADER FH, BMPINFOHEADER IH){
     printf("\n\n===========================\n");
     printf("BMP File Header");

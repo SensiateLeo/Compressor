@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <math.h>
 
+//Implementação da função que aplica a DCT nas matrizes 8x8
+//Baseada na implementação fornecida em aula
 void dct(int **DCTMatrix, unsigned char **Matrix, int N, int M){
     double Ci = 0.0, Cj = 0.0;
     double mat=0.0;
@@ -34,7 +36,8 @@ void dct(int **DCTMatrix, unsigned char **Matrix, int N, int M){
     }
 }
 
-
+//Função para separar a matriz da imagem em blocos 8x8
+//Retorna um "cubo" de n_blocos x 8 x 8
 unsigned char ***separa_blocos_8_x_8 (unsigned char **matriz, int num_col, int num_lin){
     //dimensao dos blocos
     int n = 8;
@@ -42,19 +45,6 @@ unsigned char ***separa_blocos_8_x_8 (unsigned char **matriz, int num_col, int n
 
     //numero de blocos em que a imagem sera dividida
     num_blocos = (int)(num_lin/n)*(int)(num_col/n);
-
-    /*
-    printf("\n\n============================\n");
-    printf("Extracao de blocos da imagem\n");
-    printf("============================\n\n");
-    printf("===========\n");
-    printf("Informacoes\n");
-    printf("=============================================\n");
-    printf("Dimensoes da imagem: %d x %d\n", num_lin, num_col);
-    printf("Dimensoes dos blocos a serem extraidos: %d x %d\n", n, n);
-    printf("Numero de blocos a serem extraidos: %d\n", num_blocos);
-    printf("=============================================\n\n");
-    */
 
     unsigned char*** blocos;
 
@@ -83,6 +73,7 @@ unsigned char ***separa_blocos_8_x_8 (unsigned char **matriz, int num_col, int n
     }
 
     int aux_lin = 0, aux_col = 0;
+    //Dividinso os blocos 8x8
     for (i = 0; i < num_blocos; i++){
         if (((i)%((int)(num_col/n)) == 0) && (i!=0)){
             aux_lin += n;
@@ -99,6 +90,7 @@ unsigned char ***separa_blocos_8_x_8 (unsigned char **matriz, int num_col, int n
     return blocos;
 }
 
+//Função que aplica a DCT nos blocos 8x8 do cubo
 void aplica_DCT_blocos(int ***DCT_Matrix, unsigned char ***blocos, int num_col, int num_lin){
     int n = 8;
     int num_blocos;

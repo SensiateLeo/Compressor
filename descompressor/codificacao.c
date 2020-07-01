@@ -5,6 +5,8 @@
 
 #include "codificacao.h"
 
+//Tabela de prefixos DC
+//categoria --> cÃ³digo
 void define_PrefixTables(PREFIX *prefix_table){
     prefix_table[0].prefix_bits[0] = '0';
     prefix_table[0].prefix_bits[1] = '1';
@@ -87,9 +89,11 @@ void define_PrefixTables(PREFIX *prefix_table){
     prefix_table[10].tam_total = 18;
 }
 
-
+//Tabela de prefixos AC
+//zeros/categoria --> cÃ³digo
 void define_PrefixTablesAC(PREFIX_AC **prefix_table){
-    //zeros/categoria --> bits e tamanho
+
+    //cÃ³digo de fim de bloco
     prefix_table[0][0].prefix_bits[0] = '1';
     prefix_table[0][0].prefix_bits[1] = '0';
     prefix_table[0][0].prefix_bits[2] = '1';
@@ -2665,7 +2669,7 @@ void define_PrefixTablesAC(PREFIX_AC **prefix_table){
     prefix_table[14][10].prefix_bits[16] = '\0';
     prefix_table[14][10].tam_total = 26;
 
-    //Fim do arquivo!
+    //ExtensÃ£o de zeros
     prefix_table[15][0].prefix_bits[0] = '1';
     prefix_table[15][0].prefix_bits[1] = '1';
     prefix_table[15][0].prefix_bits[2] = '1';
@@ -2872,40 +2876,11 @@ void define_PrefixTablesAC(PREFIX_AC **prefix_table){
     prefix_table[15][10].tam_total = 26;
 }
 
-void exibe_binario(int n, int tamanho){
-    int r;
-    int vetor[32];
-    int i;
-
-    // Utiliza um número de 32 bits como base para a conversão.
-    for(int aux_i = 31; aux_i >= 0; aux_i--) {
-        // Executa a operação shift right até a
-        // última posição da direita para cada bit.
-        r = n >> aux_i;
-
-        // Por meio do "e" lógico ele compara se o valor
-        // na posição mais à direita é 1 ou 0
-        // e imprime na tela até reproduzir o número binário.
-        if(r & 1) {
-            vetor[aux_i] = 1;
-            //printf("1");
-        } else {
-            vetor[aux_i] = 0;
-            //printf("0");
-        }
-     }
-
-     for(i = (tamanho-1); i >= 0; i--){
-        printf("%d", vetor[i]);
-     }
-
-      printf("\n\n");
-}
-
+//FunÃ§Ã£o que fezfaz o zig zag
+//vetor[64] --> matriz 8x8
 void desfaz_zigzag(int **zigzag, int num_blocos, int ***blocos){
 
-    int i, j, k;
-    int contador;
+    int i, j;
     for(i = 0; i < num_blocos; i++){
         for(j=0; j<64; j++){
             blocos[i][SCAN[j][0]][SCAN[j][1]] = zigzag[i][j];

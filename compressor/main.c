@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string.h>
 
-//personal modules
+//Módulos criados para o trabalho
 #include "dct.h"
 #include "codificacao.h"
 #include "leitura_escrita.h"
@@ -18,6 +18,7 @@ int main(int argc, char* argv[])
     BMPFILEHEADER bmpFileHeader;
     BMPINFOHEADER bmpInfoHeader;
 
+    //Abrindo o arquivo para leitura
     fp = fopen(argv[1], "rb");
     if (fp == NULL)
     {
@@ -25,15 +26,15 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    //Calculando tamanho do arquivo
     fseek(fp, 0, SEEK_END);
 
     double tamanho;
     tamanho = ftell(fp);
 
-    printf("\nTamanho do arquivo original: %.2f bytes\n", tamanho);
-
     fclose(fp);
 
+    //Abrindo arquivo indicado pelo usuário
     fp = fopen(argv[1], "rb");
     if (fp == NULL)
     {
@@ -41,22 +42,28 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    //Leitura do File Header
     leituraHeader(fp, &bmpFileHeader);
-
+    //Leitura do Info Header
     leituraInfo(fp, &bmpInfoHeader);
 
+    //Verificando se o arquivo atende à todos os requisistos
     if (!(verificaArquivoBmp(bmpFileHeader, bmpInfoHeader))){
+        //Se o arquivo não corresponder aos requisistos, o programa é encerrado!
         fclose(fp);
     }
 
+    //Exibindo informações de cabeçalho para o usuário
     exibeInformacoesCabecalhos(bmpFileHeader, bmpInfoHeader);
 
     unsigned char*** blocos_Y;
     unsigned char*** blocos_Cb;
     unsigned char*** blocos_Cr;
 
+    //Calculando o número de blocos 8x8 necessários para codificar a imagem
     int num_blocos = (int)(bmpInfoHeader.biWidth/8)*(int)(bmpInfoHeader.biHeight/8);
 
+    //Declaração dos vetores que receberão os blocos após a quantização
     int*** blocos_Y_quantizados;
 
     blocos_Y_quantizados = (int ***) calloc (num_blocos, sizeof(int **));
@@ -130,20 +137,26 @@ int main(int argc, char* argv[])
     unsigned char** G;
     unsigned char** R;
 
+    //Matrizes B, G e R correspondentes à imagem original
     B = aloca_matriz(bmpInfoHeader.biHeight,bmpInfoHeader.biWidth);
     G = aloca_matriz(bmpInfoHeader.biHeight,bmpInfoHeader.biWidth);
     R = aloca_matriz(bmpInfoHeader.biHeight,bmpInfoHeader.biWidth);
 
+    //Lê todos os bits da imagem, e coloca nos correspondentes canais (B G e R)
     leituraBits(fp, B, G, R, bmpInfoHeader.biHeight, bmpInfoHeader.biWidth);
 
     fclose(fp);
 
+    //Convertendo os canais originais para Y, Cb e Cr
     converte_YCbCr(B, G, R, B, G, R, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
+
+    //Após a conversão, temos o seguinte formato:
     /*
     B --> Y
     G --> Cb
     R --> Cr
     */
+
     //Amostrando componentes Cb e Cr
     unsigned char** Cb_amostr;
     unsigned char** Cr_amostr;
@@ -151,6 +164,7 @@ int main(int argc, char* argv[])
     Cb_amostr = aloca_matriz(bmpInfoHeader.biHeight/2,bmpInfoHeader.biWidth/2);
     Cr_amostr = aloca_matriz(bmpInfoHeader.biHeight/2,bmpInfoHeader.biWidth/2);
 
+    //Realizando amostragem nos canais Cb e Cr
     amostra_YCbCr_4_2_0(Cb_amostr, Cr_amostr, G, R, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
 
     /*
@@ -169,39 +183,12 @@ int main(int argc, char* argv[])
         }
     }*/
 
-    //Separando a mariz R em blocos 8x8
+    //Separando as matrizes em blocos 8x8 --> num_blocos com matrizes 8x8
     blocos_Y = separa_blocos_8_x_8(B, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
     blocos_Cb = separa_blocos_8_x_8(Cb_amostr, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
     blocos_Cr = separa_blocos_8_x_8(Cr_amostr, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
-    /*
-    int f,g;
-
-    for(f = 0; f < bmpInfoHeader.biHeight; f++){
-        free(B[f]);
-    }
-    free(B);
-
-    for(f = 0; f < bmpInfoHeader.biHeight; f++){
-        free(G[f]);
-    }
-    free(G);
-
-    for(f = 0; f < bmpInfoHeader.biHeight; f++){
-        free(R[f]);
-    }
-    free(R);
-
-    for(f = 0; f < bmpInfoHeader.biHeight/2; f++){
-        free(Cb_amostr[f]);
-    }
-    free(Cb_amostr);
-
-    for(f = 0; f < bmpInfoHeader.biHeight/2; f++){
-        free(Cr_amostr[f]);
-    }
-    free(Cr_amostr); */
-
+    //Alocando os blocos que receberão o resultado da DCT
     int *** blocos_Y_DCT;
 
     blocos_Y_DCT = (int ***) calloc (num_blocos, sizeof(int **));
@@ -271,69 +258,23 @@ int main(int argc, char* argv[])
       }
     }
 
-    //Aplicação da DCT nos bloquinhos
+    //Aplicação da DCT nos blocos
     //entrada eh unsigned char
+    //blocos --> DCT --> blocos_DCT
     aplica_DCT_blocos(blocos_Y_DCT, blocos_Y, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
     aplica_DCT_blocos(blocos_Cb_DCT, blocos_Cb, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
     aplica_DCT_blocos(blocos_Cr_DCT, blocos_Cr, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
     //saida eh int
 
-    /*
-    for(g = 0; g < num_blocos; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Y[g][f]);
-        }
-        free(blocos_Y[g]);
-    }
-    free(blocos_Y);
 
-    for(g = 0; g < num_blocos/4; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Cb[g][f]);
-        }
-        free(blocos_Cb[g]);
-    }
-    free(blocos_Cb);
-
-    for(g = 0; g < num_blocos/4; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Cr[g][f]);
-        }
-        free(blocos_Cr[g]);
-    }
-    free(blocos_Cr); */
-
+    //Aplicando a quantização nos blocos, após a DCT
     //entrada eh int
     aplica_quantizacao(mat_quantizacao_luminancia, blocos_Y_DCT, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight, blocos_Y_quantizados);
     aplica_quantizacao(mat_quantizacao_cromancia, blocos_Cb_DCT, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2, blocos_Cb_quantizados);
     aplica_quantizacao(mat_quantizacao_cromancia, blocos_Cr_DCT, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2, blocos_Cr_quantizados);
     //saida eh int
 
-    /*
-    for(g = 0; g < num_blocos; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Y_DCT[g][f]);
-        }
-        free(blocos_Y_DCT[g]);
-    }
-    free(blocos_Y_DCT);
-
-    for(g = 0; g < num_blocos/4; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Cb_DCT[g][f]);
-        }
-        free(blocos_Cb_DCT[g]);
-    }
-    free(blocos_Cb_DCT);
-
-    for(g = 0; g < num_blocos/4; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Cr_DCT[g][f]);
-        }
-        free(blocos_Cr_DCT[g]);
-    }
-    free(blocos_Cr_DCT); */
-
+    //Alocando a matriz que receberá o bloco após o "zig zag"
     double **zigzag_block_Y;
     zigzag_block_Y = malloc(num_blocos*sizeof(double *));
     if (zigzag_block_Y == NULL) {
@@ -346,23 +287,21 @@ int main(int argc, char* argv[])
             printf ("** Erro: Memoria Insuficiente **");
         }
     }
+
+    //Realiza o "zig zag" nos blocos quantizados
+    //Dessa forma, as matrizes 8x8 são transformadas em vetores de 64 posições
+    //blocos 8x8 --> vetores[64]
     zigzag(zigzag_block_Y, blocos_Y_quantizados, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
 
-    /*
-    for(g = 0; g < num_blocos; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Y_quantizados[g][f]);
-            blocos_Y_quantizados[g][f] = NULL;
-        }
-        free(blocos_Y_quantizados[g]);
-        blocos_Y_quantizados[g] = NULL;
-    }
-    free(blocos_Y_quantizados);
-    blocos_Y_quantizados = NULL; */
-
+    //Amtriz que receberá os códigos DC do canal Y
+    //Os códigos recebidos tem categoria/valor
+    //Matriz de num_blocos linhas por 2 colunas
     int **dc_codes_Y;
     dc_codes_Y = entropyCoding(zigzag_block_Y, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
+    //A função retorna o código DC e o tamanho total do código
+    //A codificação dos coeficientes DC é feita através da codificação por diferenças
 
+    //Estrutura que rece uma pré- codificação dos coeficientes AC
     int ***pre_ac_codes_Y;
     pre_ac_codes_Y = (int ***) calloc (num_blocos, sizeof(int **));
     if (pre_ac_codes_Y == NULL) {
@@ -384,12 +323,26 @@ int main(int argc, char* argv[])
         }
       }
     }
+    //Pré-codifica os coeficientes AC presentes no vetor após o zig zag
+    //Retorna um cubo de num_blocos x 63 x 3
+    //cada bloco, pode conter até 63 coeficientes AC
+    //Cada coeficiente tem a informação de número de zeros/categoria/valor
     pre_ac_codes_Y = pre_codifica_AC(zigzag_block_Y, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
 
     int ***ac_codes_Y;
     ac_codes_Y = aloca_cubo_int(num_blocos,63,2);
+
+    //A estrutura num_zeros/categoria/valor é passada para a codificação
+    //Que codifica de acordo com a tabela pré determinada
     ac_codes_Y = codifica_AC(pre_ac_codes_Y, bmpInfoHeader.biWidth, bmpInfoHeader.biHeight);
 
+    //A função retorna os coeficientes AC codificados
+    //retorna código/valor
+
+     //A codificação dos coeficientes AC é feita através da codificação por entropia
+
+
+    //O mesmo processo descrito acima é realizado para os canais Cb e Cr
     double **zigzag_block_Cb;
     zigzag_block_Cb = malloc(num_blocos*sizeof(double *));
     if (zigzag_block_Cb == NULL) {
@@ -402,25 +355,21 @@ int main(int argc, char* argv[])
             printf ("** Erro: Memoria Insuficiente **");
         }
     }
+    //Aplicação do zig zag nos blocos
     zigzag(zigzag_block_Cb, blocos_Cb_quantizados, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
-    /*for(g = 0; g < num_blocos/4; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Cb_quantizados[g][f]);
-        }
-        free(blocos_Cb_quantizados[g]);
-    }
-    free(blocos_Cb_quantizados); */
-
     int **dc_codes_Cb;
+    //Codificando coeficientes DC
     dc_codes_Cb = entropyCoding(zigzag_block_Cb, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
     int ***pre_ac_codes_Cb;
+    //Pr-e- codifica os ACs
     pre_ac_codes_Cb = aloca_cubo_int(num_blocos,63,3);
     pre_ac_codes_Cb = pre_codifica_AC(zigzag_block_Cb, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
     int ***ac_codes_Cb;
     ac_codes_Cb = aloca_cubo_int(num_blocos,63,2);
+    //Codifica os ACs
     ac_codes_Cb = codifica_AC(pre_ac_codes_Cb, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
 
@@ -436,27 +385,25 @@ int main(int argc, char* argv[])
             printf ("** Erro: Memoria Insuficiente **");
         }
     }
+    //APlica zig zag nos blocos
     zigzag(zigzag_block_Cr, blocos_Cr_quantizados, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
-   /* for(g = 0; g < num_blocos/4; g++){
-        for(f = 0; f < 8; f++){
-            free(blocos_Cr_quantizados[g][f]);
-        }
-        free(blocos_Cr_quantizados[g]);
-    }
-    free(blocos_Cr_quantizados); */
-
     int **dc_codes_Cr;
+    //Codifica os coeficientes DC
     dc_codes_Cr = entropyCoding(zigzag_block_Cr, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
     int ***pre_ac_codes_Cr;
     pre_ac_codes_Cr = aloca_cubo_int(num_blocos,63,3);
+    //Pr-e- codifica os coeficientes AC
     pre_ac_codes_Cr = pre_codifica_AC(zigzag_block_Cr, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
     int ***ac_codes_Cr;
     ac_codes_Cr = aloca_cubo_int(num_blocos,63,2);
+    //Codifica os coeficientes AC
     ac_codes_Cr = codifica_AC(pre_ac_codes_Cr, bmpInfoHeader.biWidth/2, bmpInfoHeader.biHeight/2);
 
+    //Criando um novo arquivo de saída, no formato binário
+    //O arquivo possui o mesmo nome do arquivo de entrada
     char nome_arquivo_saida[strlen(argv[1])];
     strncpy(nome_arquivo_saida, argv[1], strlen(argv[1]));
     nome_arquivo_saida[(strlen(argv[1])-4)] = '.';
@@ -465,6 +412,8 @@ int main(int argc, char* argv[])
     nome_arquivo_saida[(strlen(argv[1])-1)] = 'n';
     nome_arquivo_saida[(strlen(argv[1]))] = '\0';
 
+    //Gravando resultado da compressão
+    //Cabeçalho e códigos DC e AC dos canais Y, Cb e Cr
     grava_result_compressao(bmpFileHeader, bmpInfoHeader, dc_codes_Y, ac_codes_Y, dc_codes_Cb, ac_codes_Cb, dc_codes_Cr, ac_codes_Cr, nome_arquivo_saida);
 
     fp = fopen(nome_arquivo_saida, "rb");
@@ -474,12 +423,17 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    //Calculando o tamanho do arquivo de saída
     fseek(fp, 0, SEEK_END);
     double tamanho_saida;
     tamanho_saida = ftell(fp);
 
-    double taxa_compressao = tamanho_saida/tamanho;
+//Calculando a taxa de compressão
+    double taxa_compressao = 1 - (tamanho_saida/tamanho);
 
+
+//Exibindo informações
+    printf("\n\nTamanho do arquivo original: %.2f bytes\n", tamanho);
     printf("\nTamanho do arquivo de saida: %.2f bytes\n", tamanho_saida);
 
     printf("\nTaxa de compressao: %.2f\n\n", taxa_compressao);

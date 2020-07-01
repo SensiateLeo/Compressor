@@ -6,7 +6,7 @@
 #include "desquantizacao.h"
 #include "gerencia_memoria.h"
 
-
+//Função que aplica a desquantização nos blocos
 //Baseado na implementacao fornecida em aula pelo professor
 void aplica_desquantizacao(const unsigned char mat_quantizacao[8][8], int ***blocosDCT, int num_blocos, int ***Blocos_Quantizados){
 
@@ -18,19 +18,9 @@ void aplica_desquantizacao(const unsigned char mat_quantizacao[8][8], int ***blo
         }
 
     }
-
-    /*for (i = 0; i < num_blocos; i++){
-
-        for (j = 0; j < 8; j++){
-            for (k = 0; k < 8; k++){
-                printf("%d ", blocosDCT[i][j][k]);
-            }
-            printf("\n");
-        }
-        printf("\n\n");
-    }*/
 }
 
+//Função para aplica a DCT inversa
 //Baseado na implementacao fornecida em aula pelo professor
 void idct(unsigned char** Matrix, int **DCTMatrix, int N, int M){
     double Ci=0.0, Cj=0.0, mat = 0.0;
@@ -61,6 +51,7 @@ void idct(unsigned char** Matrix, int **DCTMatrix, int N, int M){
     }
 }
 
+//Função que aplica a IDCT nos blocos 8x8 do canal
 void aplica_IDCT_blocos(unsigned char ***blocos_Y, int ***blocos, int num_blocos){
 
     for(int i = 0; i < num_blocos; i++){
@@ -69,6 +60,7 @@ void aplica_IDCT_blocos(unsigned char ***blocos_Y, int ***blocos, int num_blocos
 
 }
 
+//Une os blocos num_blocos 8x8 do canal em uma matriz de tamanho igual à da imagem original
 void une_bloco_matriz(unsigned char **Matrix, unsigned char ***blocos, int num_lin, int num_col){
 
     int n = 8;
@@ -76,7 +68,6 @@ void une_bloco_matriz(unsigned char **Matrix, unsigned char ***blocos, int num_l
 
     int aux_lin = 0, aux_col = 0;
     for (int i = 0; i < num_blocos; i++){
-       // printf("\n\nBloco %d\n\n", i);
         if (((i)%((int)(num_col/n)) == 0) && (i!=0)){
             aux_lin += n;
             aux_col = 0;

@@ -1,6 +1,7 @@
 #ifndef DESQUANTIZACAO_H
 #define DESQUANTIZACAO_H
 
+//Mariz de quantização para canal Y
 static const unsigned char mat_quantizacao_luminancia[8][8] = {{16, 11, 10, 16,  24,  40,  51,  61},
                                                             {12, 12, 14, 19,  26,  58,  60,  55},
                                                             {14, 13, 16, 24,  40,  57,  69,  56},
@@ -10,7 +11,7 @@ static const unsigned char mat_quantizacao_luminancia[8][8] = {{16, 11, 10, 16, 
                                                             {79, 64, 78, 87, 103, 121, 120, 101},
                                                             {72, 92, 95, 98, 112, 100, 103,  99}};
 
-
+//Mariz de quantização para canais Cb e Cr
 static const unsigned char mat_quantizacao_cromancia[8][8] = {{17, 18, 24, 47, 99, 99, 99, 99},
                                                            {18, 21, 26, 66, 99, 99, 99, 99},
                                                            {24, 26, 56, 99, 99, 99, 99, 99},

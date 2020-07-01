@@ -1,6 +1,8 @@
 #ifndef CONDIFICACAO_H
 #define CODIFICACAO_H
 
+//Marizes com os coeficientes das tabelas de prefixo AC
+//São usadas para comparar soemnte com as sequencias de mesmo tamanho da sequancia que esta sendo lida do buffer
 static const int coef_AC_2[2][2] = {{0,1},{0,2}};
 
 static const int coef_AC_3[1][2] = {{0,3}};
@@ -40,6 +42,7 @@ static const int coef_AC_15[126][2] = {{0,9},{0,10},{1,6},{1,7},{1,8},{1,9},{1,1
                                        {15,1},{15,2},{15,3},{15,4},{15,5},{15,6},{15,7},{15,8},{15,9},{15,10}
                                        };
 
+//Estrutura para guiar o zigzag nos blocos 8x8
 static const int SCAN[64][2] = {{0,0},{0,1},{1,0},{2,0},{1,1},{0,2},{0,3},{1,2},
                          {2,1},{3,0},{4,0},{3,1},{2,2},{1,3},{0,4},{0,5},
                          {1,4},{2,3},{3,2},{4,1},{5,0},{6,0},{5,1},{4,2},

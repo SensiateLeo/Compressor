@@ -9,17 +9,14 @@
 #include "ycbcr.h"
 
 
-int main(){
+int main(int argc, char* argv[]){
 
     FILE *fp;
-    FILE *at;
     BMPFILEHEADER bmpFileHeader;
     BMPINFOHEADER bmpInfoHeader;
 
-    int i, j;
-
-    //Abrindo arquivo
-    fp = fopen("imagem.bin", "rb");
+    //Abrindo o arquivo para leitura
+    fp = fopen(argv[1], "rb");
     if (fp == NULL)
     {
         printf("\nCouldn't open file");
@@ -49,6 +46,7 @@ int main(){
         }
     }
 
+    //Tabela de prefixos AC
     define_PrefixTablesAC(prefix_table_AC);
 
     //Lendo cabecalhos
@@ -62,11 +60,15 @@ int main(){
     //Buffer para leitura do arquivo compactado, byte a byte
     int num_blocos_total = (int)(bmpInfoHeader.biWidth/8)*(int)(bmpInfoHeader.biHeight/8);
 
+    //Número de blocos dos canais Y, Cb e Cr
     int num_blocos[3];
     num_blocos[0] = num_blocos_total;
     num_blocos[1] = num_blocos_total/4;
     num_blocos[2] = num_blocos_total/4;
 
+    //Estruturas necessárias para decodificação
+
+    //Cubo que receberá os canais Y, Cb e Cr
     unsigned char ***canais;
     canais = (unsigned char***) calloc (3, sizeof(unsigned char **));
 
@@ -90,6 +92,8 @@ int main(){
         }
     }
 
+    //Matriz de blocos, que receberá os blocos de 64 posições
+    //Correspondentes aos blocos codificados
     int **blocos;
     blocos = calloc(num_blocos[0], sizeof(int *));
     if (blocos == NULL) {
@@ -103,6 +107,7 @@ int main(){
         }
     }
 
+    //Estrutura que receberá os blocos após a desquantização
     int*** blocos_DCT;
     blocos_DCT = (int***) calloc (num_blocos[0], sizeof(int **));
     if (blocos_DCT == NULL) {
@@ -124,6 +129,8 @@ int main(){
         }
       }
     }
+
+    //Estrutura que receberá os blocos após a IDCT
     unsigned char ***blocos_IDCT;
     blocos_IDCT = (unsigned char***) calloc (num_blocos[0], sizeof(unsigned char **));
     if (blocos_IDCT == NULL) {
@@ -146,6 +153,7 @@ int main(){
       }
     }
 
+    //Sub canal criado para a expansão dos canais amostrados Cb e Cr
     unsigned char *** sub_canal;
     sub_canal = (unsigned char***) calloc (2, sizeof(unsigned char **));
     if (sub_canal == NULL) {
@@ -168,64 +176,67 @@ int main(){
       }
     }
 
+    //Para os três canais, é feito:
     for (int a = 0; a < 3; a++){
-        printf("\nEntrou no for!\n");
-        printf("\nNum_Blocos: %d\n", num_blocos[a]);
 
-        printf("\nAlocou bloco\n");
-
+        //Recupera um canal de num_blocos do arquivo binario
         recupera_canal(fp, prefix_table, prefix_table_AC, num_blocos[a], blocos);
 
-        printf("Antes dos blocos quantizados\n");
-
-        printf("\nAlocou blocos quantizados!\n");
-
+        //Desfaz o zigzag dos blocos
+        //vetores de 64 posições --> blocos 8x8
         desfaz_zigzag(blocos,num_blocos[a],blocos_DCT);
-
-        printf("Depois dos blocos quantizados\n");
-
-        printf("Antes dos blocos DCT\n");
 
         //Desquantizacao ok
         if(a == 0){
+            //Se o canal é Y, desquantiza com a matriz de luminância
             aplica_desquantizacao(mat_quantizacao_luminancia, blocos_DCT, num_blocos[a], blocos_DCT);
         }
         else{
+            //Se são os canais Cb e Cr, desquantiza com a matriz de cromância
             aplica_desquantizacao(mat_quantizacao_cromancia, blocos_DCT, num_blocos[a], blocos_DCT);
         }
 
-        printf("Depois dos blocos DCT\n");
-
-        printf("Antes dos blocos IDCT\n");
-
+        //Aplica a DCT Inversa nos blocos 8x8
         aplica_IDCT_blocos(blocos_IDCT, blocos_DCT, num_blocos[a]);
 
-        printf("Depois dos blocos IDCT\n");
-
         if (a > 0){
+            //Se são os canais Cb e Cr:
 
+            //Une os blocos 8x8 em uma matriz
             une_bloco_matriz(sub_canal[a-1], blocos_IDCT, bmpInfoHeader.biHeight/2,bmpInfoHeader.biWidth/2);
+            //Expande o sub_canal para uma matriz do tamanho da imagem original
             amplia_canal(canais[a], sub_canal[a-1], bmpInfoHeader.biHeight,bmpInfoHeader.biWidth);
 
         }
         else{
+            //Une os blocos em uma matriz, do tamanho da imagem original
             une_bloco_matriz(canais[a], blocos_IDCT, bmpInfoHeader.biHeight,bmpInfoHeader.biWidth);
-            printf("Passou aquiiiiiieeeee");
         }
-
-        printf("Aqui tambem passou");
-
-        gravaArquivoBmp(bmpFileHeader,bmpInfoHeader, canais[a],canais[a],canais[a],"reconstrucao_Y.bmp");
-
-        printf("Gravou imagem!");
 
     }
 
+    //Converte os canais Y, Cb e Cr para B, G e R novamente
     converte_RGB(canais[0],canais[1],canais[2],canais[0],canais[1],canais[2],bmpInfoHeader.biWidth,bmpInfoHeader.biHeight);
-    gravaArquivoBmp(bmpFileHeader,bmpInfoHeader, canais[0],canais[1],canais[2],"reconstrucao_Y_completa.bmp");
+
+    //Criando um novo arquivo de saída, no formato binário
+    //O arquivo possui o mesmo nome do arquivo de entrada
+    char nome_arquivo_saida[strlen(argv[1])];
+    strncpy(nome_arquivo_saida, argv[1], strlen(argv[1]));
+    nome_arquivo_saida[(strlen(argv[1])-4)] = '.';
+    nome_arquivo_saida[(strlen(argv[1])-3)] = 'b';
+    nome_arquivo_saida[(strlen(argv[1])-2)] = 'm';
+    nome_arquivo_saida[(strlen(argv[1])-1)] = 'p';
+    nome_arquivo_saida[(strlen(argv[1]))] = '\0';
+
+    //Grava esses canais, junto ao cabeçalho no arquivo de saída
+    //Com isso, recupera- se a imagem original
+    gravaArquivoBmp(bmpFileHeader,bmpInfoHeader, canais[0],canais[1],canais[2], nome_arquivo_saida);
+
+    printf("Arquivo recuperado com sucesso!");
 
     fclose(fp);
-
+    
+    //free() nos canais recuperados
     for (int b=0; b < 3; b++){
         for (int c=0; c < bmpInfoHeader.biHeight; c++){
             free(canais[b][c]);

@@ -33,9 +33,8 @@ void leituraHeader(FILE *F, BMPFILEHEADER *H);
 void leituraInfo(FILE *F, BMPINFOHEADER *H);
 void leituraBits(FILE *F, unsigned char *B, int num_blocos);
 void exibeInformacoesCabecalhos(BMPFILEHEADER FH, BMPINFOHEADER IH);
-void converte_string_binario(int n, int tamanho, char* vetor_aux, char* vetor);
+void converte_string_binario(int n, char* vetor);
 void gravaArquivoBmp(BMPFILEHEADER FH, BMPINFOHEADER IH, unsigned char **B,unsigned char **G,unsigned char **R, char* nome_imagem);
 void recupera_canal(FILE *fp, PREFIX prefix_table[11], PREFIX_AC **prefix_table_AC, int num_blocos, int ** blocos);
 
 #endif // LEITURA_ESCRITA
-

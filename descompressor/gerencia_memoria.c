@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+//Função para alocar uma matriz de unsigned char
 unsigned char **aloca_matriz (int m, int n)
 {
   unsigned char** matriz;  /* ponteiro para a matriz */
@@ -26,6 +27,8 @@ unsigned char **aloca_matriz (int m, int n)
   return (matriz); /* retorna o ponteiro para a matriz */
 }
 
+
+//Função para alocar uma matriz de doubles
 double ***aloca_matriz_double (int num_blocos, int n, int m)
 {
     double*** blocos;
@@ -57,6 +60,7 @@ double ***aloca_matriz_double (int num_blocos, int n, int m)
     return blocos;
 }
 
+//Aloca um cubo de inteiros
 int ***aloca_cubo_int (int num_blocos, int n, int m)
 {
     int*** blocos;
@@ -87,7 +91,6 @@ int ***aloca_cubo_int (int num_blocos, int n, int m)
 
     return blocos;
 }
-
 
 int **malloc_mat_int(int n, int m)
 {
